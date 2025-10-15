@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: stvol_postgres
+    environment:
+      POSTGRES_DB: stvol_garden
+      POSTGRES_USER: stvol_user
+      POSTGRES_PASSWORD: stvol_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - stvol_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: stvol_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - stvol_network
+
+  backend:
+    build: ./backend
+    container_name: stvol_backend
+    environment:
+      DATABASE_URL: postgresql://stvol_user:stvol_password@postgres:5432/stvol_garden
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your-super-secret-jwt-key
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_SECRET: ${TELEGRAM_BOT_SECRET}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - stvol_network
+
+  frontend:
+    build: ./frontend
+    container_name: stvol_frontend
+    environment:
+      VITE_API_URL: http://localhost:3000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - stvol_network
+
+volumes:
+  postgres_data:
+
+networks:
+  stvol_network:
+    driver: bridge
